@@ -62,34 +62,112 @@ macStats.factory('myService',['$http', function($http){
 				url: '/api/max-per-trend-user?trend=' + trend + '&get=' + get + '&created=' + created + '&owner=' + owner
 			});
 		},
+
+		//CUSTOM FUNCTIONS
+		customFunction1: function(object){
+			//Declare a new array
+			var macs = [];
+
+			//Store the parameter object "mac" property into array
+			for(var x=0; x<object.length; x++){
+				macs.push(object[x]['activeDevice']);
+			}
+			
+			//array macs now contained the active macs perday/perweek/permonth
+			return macs;
+
+		},
+
+		customFunction2: function(object){
+			//Declare objects storage
+			var first = new Object(), last = new Object();
+
+			//Get the 1st element of object parameter
+			first = object[0];
+			
+			//Get the last element of object parameter
+			var reverse = object.reverse();
+			last = reverse[0];
+			
+			//Split the "packages" property of each object to become an array
+			var fst = first.packages.split(",");
+			var	lst = last.packages.split(",");
+			
+			//Apply Subtractions for each array element with integers
+			//Note: When subtracting a numbered string to an integer, no need to use parseInt()
+			fst[2] = fst[2] - lst[2];
+			fst[4] = fst[4] - lst[4];
+			fst[6] = fst[6] - lst[6];
+			fst[8] = fst[8] - lst[8];
+			fst[10] = fst[10] - lst[10];
+			fst[12] = fst[12] - lst[12];
+			fst[14] = fst[14] - lst[14];
+			fst[16] = fst[16] - lst[16];
+
+			//Error Trapping
+			//Note: If the result of string subtraction is NaN then the result must be 0.
+			!parseInt(fst[2],10) ? fst[2] = 0 : true;
+			!parseInt(fst[4],10) ? fst[4] = 0 : true;
+			!parseInt(fst[6],10) ? fst[6] = 0 : true;
+			!parseInt(fst[8],10) ? fst[8] = 0 : true;
+			!parseInt(fst[10],10) ? fst[10] = 0 : true;
+			!parseInt(fst[12],10) ? fst[12] = 0 : true;
+			!parseInt(fst[14],10) ? fst[14] = 0 : true;
+			!parseInt(fst[16],10) ? fst[16] = 0 : true;
+			
+			//Store the final result of fst into new object. Store it to "packages" property and add "mac" propery.
+			var obj = new Object();
+			obj.mac = first.mac;
+			obj.label = first.label;
+			obj.packages = fst.splice(1).join(", ");
+			obj.dateCreated = first.dateCreated;
+			
+			return obj;
+		},
+
+		customFunction3: function(){
+			var options = {
+				zoom: 12,
+				center: {lat: 14.5577445, lng:121.0230858}
+			}
+
+			var map = new google.maps.Map(document.getElementById('map'), options);
+		}
 	};
 }]);
 
 /*DASHBOARD SECTION*/
 macStats.controller('dashboardControllerPD',
-['$scope', '$http', 'myService', function($scope, $http, myService){	
-	$scope.trendUrl = ["admin/dashboard-perDay", "admin/dashboard-perWeek", "admin/dashboard-perMonth"];	/*Trend Url Array*/
-	$scope.userTypeIndicator = "admin";	/*Inserted in beginnin of url to indicate user & admin*/
+['$scope', '$http', 'myService', function($scope, $http, myService){
+	//Trend Url Array	
+	$scope.trendUrl = ["admin/dashboard-perDay", "admin/dashboard-perWeek", "admin/dashboard-perMonth"];
+	//Inserted in beginnin of url to indicate user & admin
+	$scope.userTypeIndicator = "admin";
+	//RETURNS dashboard total active value
 	myService.getActiveMacs('countActivePD', 'getCount', '').then(function(response){
 		$scope.dashTotalActive = response.data[0].activeDevice;
-	})	/*RETURNS dashboard total active value*/
+	})
+	//RETURNS dropdown values in total active value
 	myService.getActiveMacs('countActivePD', 'getMac', '').then(function(response){
 		$scope.activeDevices = response.data;
-	})	/*RETURNS dropdown values in total active value*/
+	})
+	//RETURNS max connected, util-tx-rx, usage-tx-rx values
 	myService.maxPerTrend('perDay', 'getSum', '').then(function(response){
 		$scope.dashTotalConnected = response.data[0].active;
 		$scope.dashMaxUtiltx = Math.round(response.data[0].utiltx);
 		$scope.dashMaxUtilrx = Math.round(response.data[0].utilrx);
 		$scope.dashMaxUsagetx = response.data[0].usagetx;
 		$scope.dashMaxUsagerx = response.data[0].usagerx;
-	})	/*RETURNS max connected, util-tx-rx, usage-tx-rx values*/
+	})
+	//RETURNS dateCreated as parameter to get the dropdown values in max connected
 	myService.maxPerTrend('perDay', 'getSumDate', '').then(function(response){
 		myService.maxPerTrend('perDay', 'getEach', response.data[0].dateCreated).then(function(response){
 			$scope.eachMax = response.data;
 		})
-	})	/*RETURNS dateCreated as parameter to get the dropdown values in max connected*/
+	})
 	
-	graphActiveDevices("get-active-macs?trend=perDay&get=getCount&created=", "Day");		/*Calls the Graph Functions Section*/
+	//Calls the Graph Functions Section
+	graphActiveDevices("get-active-macs?trend=perDay&get=getCount&created=", "Day");
 	$scope.activeDevicesGraph = function(){
 		graphActiveDevices("get-active-macs?trend=perDay&get=getCount&created=", "Day");
 	}
@@ -103,18 +181,39 @@ macStats.controller('dashboardControllerPD',
 		graphLayout("max-per-trend?trend=perDay&get=&created=", "Day", "totalUsage");
 	}
 
+	//RETURNS the list of active devices
 	$scope.trend = "Per Day";
 	myService.getActiveMacs('perDay', 'getCount', '').then(function(response){	  /*Table Data Section*/
 		$scope.devices = response.data;
-	})	/*RETURNS the list of active devices*/
+	})
+	//RETURNS the list of active macs as dropdown
 	$scope.getDropdown1 = function(dateParam){
 		myService.getActiveMacs('perDay', 'getMac', dateParam).then(function(response){
 			$scope.actives = response.data;
 		})
-	}	/*RETURNS the list of active macs as dropdown*/
+	}
+	//RETURNS the list of max values
 	myService.maxPerTrend('perDay', '', '').then(function(response){
 		$scope.max = response.data;
-	})	/*RETURNS the list of max values*/
+	})
+
+
+	//DEBUGGING SECTION
+	var arr = [];
+	myService.getActiveMacs('countActivePD', 'getMac', '').then(function(response){
+		$scope.a = myService.customFunction1(response.data);
+		
+		for(var x=0; x<$scope.a.length; x++){
+			myService.permacActivity('perDay', $scope.a[x]).then(function(response){
+				$scope.b = myService.customFunction2(response.data);
+				arr.push($scope.b);
+			})
+		}
+		
+		$scope.packageSummary = arr;
+		console.log($scope.packageSummary);
+	})
+
 }]);
 macStats.controller('dashboardControllerPW',
 ['$scope', '$http', 'myService', function($scope, $http, myService){
@@ -122,7 +221,7 @@ macStats.controller('dashboardControllerPW',
 	$scope.userTypeIndicator = "admin";	
 	myService.getActiveMacs('countActivePW', 'getCount', '').then(function(response){
 		$scope.dashTotalActive = response.data[0].activeDevice;
-	})	/*RETURNS dashboard total active value*/
+	})
 	myService.getActiveMacs('countActivePW', 'getMac', '').then(function(response){
 		$scope.activeDevices = response.data;
 	})
@@ -165,6 +264,7 @@ macStats.controller('dashboardControllerPW',
 	myService.maxPerTrend('perWeek', '', '').then(function(response){
 		$scope.max = response.data;
 	})
+
 }]);
 macStats.controller('dashboardControllerPM',
 ['$scope', '$http', 'myService', function($scope, $http, myService){
@@ -220,28 +320,35 @@ macStats.controller('dashboardControllerPM',
 /*REPORTS SECTION*/
 macStats.controller('reportsControllerPD',
 ['$scope', '$http', 'myService', function($scope, $http, myService){
-	$scope.trend = "Per Day";	/*Trend Indicator Variable*/
-	$scope.trendUrl = ["admin/reports/Summary-perDay", 	/*Trend Url Array*/
+	//Trend Indicator Variable
+	$scope.trend = "Per Day";
+	//Trend Url Array
+	$scope.trendUrl = ["admin/reports/Summary-perDay",
 					  "admin/reports/Summary-perWeek", 
 					  "admin/reports/Summary-perMonth"];
-	$scope.userTypeIndicator = "admin";		/*Inserted in beginning of url to indicate user & admin*/
+	//Inserted in beginning of url to indicate user & admin
+	$scope.userTypeIndicator = "admin";
 	
+	//RETURNS list of max values
 	myService.maxPerTrend('perDay', '', '').then(function(response){
 		$scope.max = response.data;
-	})	/*RETURNS list of max values*/
+	})
+	//RETURNS the list of macs with connected values as dropdown
 	$scope.maxEachMacs = function(dateParam){
 		myService.maxPerTrend('perDay', 'getEach', dateParam).then(function(response){
 			$scope.eachMax = response.data;
 		})
-	}	/*RETURNS the list of macs with connected values as dropdown*/
+	}
+	//RETURNS the list of number of active devices
 	myService.getActiveMacs('perDay', 'getCount', '').then(function(response){
 		$scope.devices = response.data;
-	})	/*RETURNS the list of number of active devices*/
+	})
+	//RETURNS the list of active devices as dropdown
 	$scope.activeDevices = function(dateParam){
 		myService.getActiveMacs('perDay', 'getMac', dateParam).then(function(response){
 			$scope.actives = response.data;
 		})
-	}	/*RETURNS the list of active devices as dropdown*/
+	}
 }]);
 macStats.controller('reportsControllerPW',
 ['$scope', '$http', 'myService', function($scope, $http, myService){
@@ -297,12 +404,15 @@ macStats.controller('reportsControllerPM',
 /*CHARTS SECTION*/
 macStats.controller('chartsControllerPD',
 ['$scope', '$http', 'myService', function($scope, $http, myService){
-	$scope.trend = "Per Day";	/*Trend Indicator Variable*/
+	//Trend Indicator Variable
+	$scope.trend = "Per Day";
+	//Trend Url Array
 	$scope.trendUrl = ["admin/reports/Charts-perDay", 
 					   "admin/reports/Charts-perWeek", 
-					   "admin/reports/Charts-perMonth"];	/*Trend Url Array*/
+					   "admin/reports/Charts-perMonth"];
 	
-	graphActiveDevices("get-active-macs?trend=perDay&get=getCount&created=", "Day");	/*GRAPH FUNCTIONS*/
+	//GRAPH FUNCTIONS
+	graphActiveDevices("get-active-macs?trend=perDay&get=getCount&created=", "Day");
 	graphMaxConnected("max-per-trend?trend=perDay&get=&created=", "Day");	/*...*/
 	graphMaxCcq("max-per-trend?trend=perDay&get=&created=", "Day");
 	graphMaxUtil("max-per-trend?trend=perDay&get=&created=", "Day");
@@ -357,24 +467,48 @@ macStats.controller('chartsControllerPM',
 /*PERMAC SECTION*/
 macStats.controller('perMacControllerPD',
 ['$scope', '$http', 'myService', '$timeout', function($scope, $http, myService, $timeout){	
-	$scope.userTypeIndicator = "admin";	/*Inserted in beginnin of url to indicate user & admin*/
+	//Inserted in beginnin of url to indicate user & admin
+	$scope.userTypeIndicator = "admin";
+	//Trend Url Array
 	$scope.trendUrl = ["admin/reports/PerMac-perDay", 
 					   "admin/reports/PerMac-perWeek", 
-					   "admin/reports/PerMac-perMonth"];	/*Trend Url Array*/
+					   "admin/reports/PerMac-perMonth"];
 
-				
+	//RETURNS list of macs utilizations			
 	myService.macsPerTrend('perDay').then(function(response){
 		$scope.utilizations = response.data;
-	})	/*RETURNS list of macs utilizations*/
+	})
+	//Function that searches macs
 	$scope.searchMac = function(mac){
 		myService.searchMac(mac).then(function(response){
 			$scope.results = response.data;
-		})	/*Function that searches macs*/
+		})
 	}
+
+	//Declare a storage array
+	var arr = [];
+	
+	//Get the mac of active devices and store it to a variable
+	myService.getActiveMacs('countActivePD', 'getMac', '').then(function(response){
+		$scope.a = myService.customFunction1(response.data);
+		
+		//Lopp through the object array and store every element in 'arr'
+		for(var x=0; x<$scope.a.length; x++){
+			/*Get the object returned by permacActivity function and make 
+			it as a parameter calling customFunction2 function*/
+			myService.permacActivity('perDay-graph', $scope.a[x]).then(function(response){
+				$scope.b = myService.customFunction2(response.data);
+				arr.push($scope.b);
+			})
+		}
+		
+		//Store 'arr' in to a new variable
+		$scope.packageSummary = arr;
+	})
 }]);
 macStats.controller('perMacControllerPW',
 ['$scope', '$http', 'myService', function($scope, $http, myService){
-	$scope.userTypeIndicator = "admin";	/*Inserted in beginnin of url to indicate user & admin*/
+	$scope.userTypeIndicator = "admin";	
 	$scope.trendUrl = ["admin/reports/PerMac-perDay", 
 					   "admin/reports/PerMac-perWeek", 
 					   "admin/reports/PerMac-perMonth"];
@@ -387,10 +521,24 @@ macStats.controller('perMacControllerPW',
 			$scope.results = response.data;
 		})
 	}
+
+	var arr = [];
+	myService.getActiveMacs('countActivePW', 'getMac', '').then(function(response){
+		$scope.a = myService.customFunction1(response.data);
+		
+		for(var x=0; x<$scope.a.length; x++){
+			myService.permacActivity('perWeek', $scope.a[x]).then(function(response){
+				$scope.b = myService.customFunction2(response.data);
+				arr.push($scope.b);
+			})
+		}
+		
+		$scope.packageSummary = arr;
+	})
 }]);
 macStats.controller('perMacControllerPM',
 ['$scope', '$http', 'myService', function($scope, $http, myService){
-	$scope.userTypeIndicator = "admin";	/*Inserted in beginnin of url to indicate user & admin*/
+	$scope.userTypeIndicator = "admin";	
 	$scope.trendUrl = ["admin/reports/PerMac-perDay", 
 					   "admin/reports/PerMac-perWeek", 
 					   "admin/reports/PerMac-perMonth"];
@@ -403,6 +551,20 @@ macStats.controller('perMacControllerPM',
 			$scope.results = response.data;
 		})
 	}
+
+	var arr = [];
+	myService.getActiveMacs('countActivePM', 'getMac', '').then(function(response){
+		$scope.a = myService.customFunction1(response.data);
+		
+		for(var x=0; x<$scope.a.length; x++){
+			myService.permacActivity('perMonth', $scope.a[x]).then(function(response){
+				$scope.b = myService.customFunction2(response.data);
+				arr.push($scope.b);
+			})
+		}
+		
+		$scope.packageSummary = arr;
+	})
 }]);
 
 /*PERMAC-ACTIVITY SECTION*/
@@ -412,22 +574,40 @@ macStats.controller('permacActivityPD',
 // use $location.search() to get current url search hash eg.(/macs?mac=1011200107) returns mac=1011200107 as object
 // use $location.hash() to get current url hash eg.(/macs?mac=1011200107&foo=bar) returns foo=bar as object
 	$(".permac-graph").attr("style", "display:block");
-	var urlParam = $location.search();	/*Gets the query parameter of current url as object*/
-	$scope.macParam = urlParam.mac;		/*Store the query parameter value in variable*/
 	
-	$scope.userTypeIndicator = "admin";	/*Inserted in beginnin of url to indicate user & admin*/
+	//Gets the query parameter of current url as object
+	var urlParam = $location.search();
+	//Store the query parameter value in variable
+	$scope.macParam = urlParam.mac;
+	//Inserted in beginnin of url to indicate user & admin
+	$scope.userTypeIndicator = "admin";
+	//Trend Url Array
 	$scope.trendUrl = ["admin/reports/PerMac-perDay/macs?mac=" + $scope.macParam, 
 					   "admin/reports/PerMac-perWeek/macs?mac=" + $scope.macParam, 
-					   "admin/reports/PerMac-perMonth/macs?mac=" + $scope.macParam];	/*Trend Url Array*/
+					   "admin/reports/PerMac-perMonth/macs?mac=" + $scope.macParam];
 	
+	//RETURNS THE LIST of each specific mac utilizations
 	myService.permacActivity('perDay', $scope.macParam).then(function(response){
 		$scope.utilizations = response.data;
-	})	/*RETURNS THE LIST of each specific mac utilizations*/
+	})
+	//Function that searches macs
 	$scope.searchMac = function(mac){
 		myService.searchMac(mac).then(function(response){
 			$scope.results = response.data;
-		})	/*Function that searches macs*/
+		})
 	}
+
+	//Declare a storage array
+	var arr = [];
+	//Get the object array returned by permacActivity function and make it as parameter to call customFunction2 function
+	myService.permacActivity('perDay-graph', $scope.macParam).then(function(response){
+		$scope.b = myService.customFunction2(response.data);
+		//Insert the object array in 'arr'
+		arr.push($scope.b);
+	})
+	//Store 'arr' in new variable
+	$scope.packageSummary = arr;
+	
 }]);
 macStats.controller('permacActivityPW',
 ['$scope', '$http', '$location', 'myService', function($scope, $http, $location, myService){
@@ -448,6 +628,14 @@ macStats.controller('permacActivityPW',
 			$scope.results = response.data;
 		})
 	}
+
+	var arr = [];
+	myService.permacActivity('perWeek', $scope.macParam).then(function(response){
+		$scope.b = myService.customFunction2(response.data);
+		arr.push($scope.b);
+	})
+	$scope.packageSummary = arr;
+
 }]);
 macStats.controller('permacActivityPM',
 ['$scope', '$http', '$location', 'myService', function($scope, $http, $location, myService){
@@ -468,32 +656,47 @@ macStats.controller('permacActivityPM',
 			$scope.results = response.data;
 		})
 	}
+
+	var arr = [];
+	myService.permacActivity('perMonth', $scope.macParam).then(function(response){
+		$scope.b = myService.customFunction2(response.data);
+		arr.push($scope.b);
+	})
+	$scope.packageSummary = arr;
+
 }]);
 
 /*CHARTS PERMAC-ACTIVITY SECTION*/
 macStats.controller('chartsPermacActPD',
 ['$scope', '$http', '$location', 'myService', function($scope, $http, $location, myService){
-	$(".chart-active-container").hide();	/*Hides the connected chart container*/
+	//Hides the active devices chart container
+	$(".chart-active-container").hide();
 	$(".chart-connected-container").attr("style", "display: block; margin: auto; border-top: 4px solid rgba(0, 204, 47, 0.76);");
 	
-	var urlParam = $location.search();	/*Gets the query parameter of current url in object form*/
-	$scope.macParam = urlParam.mac;	/*Gets the value of query parameter from object and stored in variable*/
+	//Gets the query parameter of current url in object form
+	var urlParam = $location.search();
+	//Gets the value of query parameter from object and stored in variable
+	$scope.macParam = urlParam.mac;
 	
 	$scope.trend = "Per Day";
-	$scope.userTypeIndicator = "admin";	/*Inserted in beginnin of url to indicate user & admin*/
+
+	//Inserted in beginnin of url to indicate user & admin
+	$scope.userTypeIndicator = "admin";	
+	//Trend Url Array
 	$scope.trendUrl = ["admin/reports/Charts-perDay/macs?mac=" + $scope.macParam, 
 					   "admin/reports/Charts-perWeek/macs?mac=" + $scope.macParam, 
-					   "admin/reports/Charts-perMonth/macs?mac=" + $scope.macParam];	/*Trend Url Array*/
+					   "admin/reports/Charts-perMonth/macs?mac=" + $scope.macParam];
 
-	graphMaxConnected("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");	/*Calling of Graph Functions*/
-	graphMaxCcq("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxUtil("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxUsage("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxLease("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxFreeMem("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxCpuFreq("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxCpuLoad("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxFreeHdd("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
+	//Calling of Graph Functions
+	graphMaxConnected("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxCcq("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxUtil("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxUsage("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxLease("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxFreeMem("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxCpuFreq("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxCpuLoad("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxFreeHdd("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
 }])
 macStats.controller('chartsPermacActPW',
 ['$scope', '$http', '$location', 'myService', function($scope, $http, $location, myService){
@@ -547,15 +750,19 @@ macStats.controller('chartsPermacActPM',
 /*ADMINISTRATION->ADD MAC LABEL SECTION*/
 macStats.controller('addMacLabel',
 ['$scope', '$http', 'myService', '$route', function($scope, $http, myService, $route){
+	//RETURNS List of Macs
 	myService.getActiveMacs('macs', '', '').then(function(response){
 		$scope.macs = response.data;
-	})	/*RETURNS List of Macs*/
+	})
+	//RETURNS Recently Updated Macs
 	myService.addMacLabel('recently-updated', '', '').then(function(response){
 		$scope.recent_macs = response.data;
-	})	/*RETURNS Recently Updated Macs*/
+	})
+	//Function that gets the mac value and inputs it into a form
 	$scope.inputMac = function(val){
 		$scope.macInput = val; 
-	}	/*Function that gets the mac value and inputs it into a form*/
+	}
+	//Function that adds/edit the label/location of macs
 	$scope.addLabel = function(){
 		if($(".aml-input-mac").val()=="" || $(".aml-input-label").val()==""){
 			alert("Complete Fields");
@@ -567,25 +774,30 @@ macStats.controller('addMacLabel',
 			$route.reload();	/*In case of need of reloading the whole page, use 
 										$window.location.reload() dont forget to inject $window in controller*/
 		}
-	}	/*Function that adds/edit the label/location of macs*/
+	}	
 }])
 
 /*ADMINISTRATION->ASSIGN MAC SECTION*/
 macStats.controller('assignMac',
 ['$scope', '$http', 'myService', '$route', function($scope, $http, myService, $route){
+	//RETURNS the unassigned macs
 	myService.macAdministration('show-unassigned', '', '').then(function(response){
 		$scope.unassigned_macs = response.data;
-	})	/*RETURNS the unassigned macs*/
+	})
+	//RETURNS the assigned macs
 	myService.macAdministration('show-assigned', '', '').then(function(response){
 		$scope.assigned_macs = response.data;
-	})	/*RETURNS the assigned macs*/
+	})
+	//RETURNS list of users as selection
 	myService.macAdministration('show-users', '', '').then(function(response){
 		$scope.users = response.data;
-	})	/*RETURNS list of users as selection*/
+	})
+	//RETURNS the list of users and the number of their owned macs
 	myService.macAdministration('count-macs-of-user', '', '').then(function(response){
 		$scope.cmof = response.data;	//cmof = count macs of user
-	})	/*RETURNS the list of users and the number of their owned macs*/
+	})
 	
+	//FUNCTION that assigns mac to users
 	$scope.assign = function(selected_user, mac){
 		if(selected_user == undefined)
 			alert('Please Select a User');
@@ -609,8 +821,9 @@ macStats.controller('assignMac',
 
 			myService.macAdministration('assign', selected_user, mac);	//Initialized ajax request		
 		}
-	}	/*FUNCTION that assigns mac to users*/
+	}
 	
+	//FUNCTION that unassigns mac to users
 	$scope.unassign = function(selected_user, mac){
 		/*Removes The Selected Mac Into Aassigned Macs*/
 		var remove = $scope.assigned_macs.findIndex(u => u.mac == mac);	//Get the index of selected mac
@@ -626,17 +839,20 @@ macStats.controller('assignMac',
 			$scope.cmof.splice(index, 1);
 		}
 		myService.macAdministration('unassign', '', mac);
-	}	/*FUNCTION that unassigns mac to users*/
+	}
 	
+	//FUNCTION that returns selected user and his/her owned macs
 	$scope.showMacsOfOwner = function(owner){
 		myService.macAdministration('show-macs-of-user', owner, '').then(function(response){
 			$scope.macsOwned = response.data;
 		})
-	}	/*FUNCTION that returns selected user and his/her owned macs*/
+	}
 
 	$scope.viewAll = function(){
 		$route.reload();
 	}
+
+	//FUNCTION that unassigns mac to users (for showMacsOfOwner purpose)
 	$scope.unassign2 = function(selected_user, mac){
 		var remove = $scope.macsOwned.findIndex(u => u.mac == mac);	
 		$scope.macsOwned.splice(remove, 1);	
@@ -650,8 +866,24 @@ macStats.controller('assignMac',
 			$scope.cmof.splice(index, 1);
 		}
 		myService.macAdministration('unassign', '', mac);
-	}	/*FUNCTION that unassigns mac to users (for showMacsOfOwner purpose)*/
+	}
 }])
+
+macStats.controller('mapsController',
+['$scope', '$http', 'myService', '$route', function($scope, $http, myService, $route){
+	
+	$scope.initMap = function(){
+		myService.customFunction3();
+	}
+
+}])
+
+
+
+/*--------------------------------------------------------------------*/
+
+
+
 
 
 //USER REPORTS SECTION
@@ -659,28 +891,38 @@ macStats.controller('assignMac',
 //DASHBOARD
 macStats.controller('userDashboardPD',
 ['$scope', '$http', 'myService', function($scope, $http, myService){	
-	var auth_user = $(".auth-user").text();	/*Get the authenticated user that logged in*/
-	$scope.trendUrl = ["user/dashboard-perDay", "user/dashboard-perWeek", "user/dashboard-perMonth"]; /*Trend Url Array*/
-	$scope.userTypeIndicator = "user";	/*Inserted in beginnin of url to indicate user & admin*/
+	//Get the authenticated user that logged in
+	var auth_user = $(".auth-user").text();
+	/*Trend Url Array*/
+	$scope.trendUrl = ["user/dashboard-perDay", "user/dashboard-perWeek", "user/dashboard-perMonth"];
+	//Inserted in beginnin of url to indicate user & admin
+	$scope.userTypeIndicator = "user";
+	
+	//RETURNS dashboard total active value
 	myService.getActiveMacsUser('countActivePD', 'getCount-user', '', auth_user).then(function(response){
 		$scope.dashTotalActive = response.data[0].activeDevice;
-	})	/*RETURNS dashboard total active value*/
+	})
+	//RETURNS dropdown values in total active value
 	myService.getActiveMacsUser('countActivePD', 'getMac-user', '', auth_user).then(function(response){
 		$scope.activeDevices = response.data;
-	})	/*RETURNS dropdown values in total active value*/
+	})
+	//RETURNS max connected, util-tx-rx, usage-tx-rx values
 	myService.maxPerTrendUser('perDay', 'getSum-user', '', auth_user).then(function(response){
 		$scope.dashTotalConnected = response.data[0].active;
 		$scope.dashMaxUtiltx = Math.round(response.data[0].utiltx);
 		$scope.dashMaxUtilrx = Math.round(response.data[0].utilrx);
 		$scope.dashMaxUsagetx = response.data[0].usagetx;
 		$scope.dashMaxUsagerx = response.data[0].usagerx;
-	})	/*RETURNS max connected, util-tx-rx, usage-tx-rx values*/
+	})
+	//RETURNS dateCreated as parameter to get the dropdown values in max connected
 	myService.maxPerTrendUser('perDay', 'getSumDate-user', '', auth_user).then(function(response){
 		myService.maxPerTrendUser('perDay', 'getEach-user', response.data[0].dateCreated, auth_user).then(function(response){
 			$scope.eachMax = response.data;
 		})
-	})	/*RETURNS dateCreated as parameter to get the dropdown values in max connected*/
-	graphActiveDevices("get-active-macs-user?trend=perDay&get=getCount-user&created=&owner=" + auth_user, "Day");	/*Calls the Graph Functions Section*/
+	})
+
+	//Calls the Graph Functions Section
+	graphActiveDevices("get-active-macs-user?trend=perDay&get=getCount-user&created=&owner=" + auth_user, "Day");
 	$scope.activeDevicesGraph = function(){
 		graphActiveDevices("get-active-macs-user?trend=perDay&get=getCount-user&created=&owner=" + auth_user, "Day");
 	}
@@ -693,18 +935,23 @@ macStats.controller('userDashboardPD',
 	$scope.maxUsageGraph = function(){
 		graphLayout("max-per-trend-user?trend=perDay&get=user&created=&owner=" + auth_user, "Day", "totalUsage");
 	}
+	
 	$scope.trend = "Per Day";
+	
+	//RETURNS the list of active devices
 	myService.getActiveMacsUser('perDay', 'getCount-user', '', auth_user).then(function(response){	  //Table Data Section
 		$scope.devices = response.data;
-	})	/*RETURNS the list of active devices*/
+	})
+	//RETURNS the list of active macs as dropdown
 	$scope.getDropdown1 = function(dateParam){
 		myService.getActiveMacsUser('perDay', 'getMac-user', dateParam, auth_user).then(function(response){
 			$scope.actives = response.data;
 		})
-	}	/*RETURNS the list of active macs as dropdown*/
+	}
+	//RETURNS the list of max values
 	myService.maxPerTrendUser('perDay', 'user', '', auth_user).then(function(response){
 		$scope.max = response.data;
-	})	/*RETURNS the list of max values*/
+	})
 	
 }]);
 macStats.controller('userDashboardPW',
@@ -811,29 +1058,40 @@ macStats.controller('userDashboardPM',
 //SUMMARIES
 macStats.controller('userReportsPD',
 ['$scope', '$http', 'myService', function($scope, $http, myService){
-	var auth_user = $(".auth-user").text();	/*Get the authenticated user that logged in*/
-	$scope.trend = "Per Day";	/*Trend Indicator Variable*/
-	$scope.trendUrl = ["user/reports/Summary-perDay",	/*Trend Url Array*/
+	//Get the authenticated user that logged in
+	var auth_user = $(".auth-user").text();
+	
+	//Trend Indicator Variable
+	$scope.trend = "Per Day";
+	
+	//Trend Url Array
+	$scope.trendUrl = ["user/reports/Summary-perDay",
 					  "user/reports/Summary-perWeek", 
 					  "user/reports/Summary-perMonth"];
-	$scope.userTypeIndicator = "user";	/*Inserted in beginning of url to indicate user & admin*/
 	
+	//Inserted in beginning of url to indicate user & admin
+	$scope.userTypeIndicator = "user";
+	
+	//RETURNS list of max values
 	myService.maxPerTrendUser('perDay', 'user', '', auth_user).then(function(response){
 		$scope.max = response.data;
-	})	/*RETURNS list of max values*/
+	})
+	//RETURNS the list of macs with connected values as dropdown
 	$scope.maxEachMacs = function(dateParam){
 		myService.maxPerTrendUser('perDay', 'getEach-user', dateParam, auth_user).then(function(response){
 			$scope.eachMax = response.data;
 		})
-	}	/*RETURNS the list of macs with connected values as dropdown*/
+	}
+	//RETURNS the list of number of active devices
 	myService.getActiveMacsUser('perDay', 'getCount-user', '', auth_user).then(function(response){
 		$scope.devices = response.data;
-	})	/*RETURNS the list of number of active devices*/
+	})
+	//RETURNS the list of active devices as dropdown
 	$scope.activeDevices = function(dateParam){
 		myService.getActiveMacsUser('perDay', 'getMac-user', dateParam, auth_user).then(function(response){
 			$scope.actives = response.data;
 		})
-	}	/*RETURNS the list of active devices as dropdown*/
+	}
 }]);
 macStats.controller('userReportsPW',
 ['$scope', '$http', 'myService', function($scope, $http, myService){
@@ -891,13 +1149,18 @@ macStats.controller('userReportsPM',
 //CHARTS
 macStats.controller('userChartsPD',
 ['$scope', '$http', 'myService', function($scope, $http, myService){
-	var auth_user = $(".auth-user").text();	/*Get the authenticated user that logged in*/
+	//Get the authenticated user that logged in
+	var auth_user = $(".auth-user").text();
+	
 	$scope.trend = "Per Day";
+	
+	//Trend Url Array
 	$scope.trendUrl = ["user/reports/Charts-perDay",
 					  "user/reports/Charts-perWeek", 
-					  "user/reports/Charts-perMonth"];		/*Trend Url Array*/
+					  "user/reports/Charts-perMonth"];
 	
-	graphActiveDevices("get-active-macs-user?trend=perDay&get=getCount-user&created=&owner=" + auth_user, "Day");	/*GRAPH FUNCTIONS*/
+	//GRAPH FUNCTIONS
+	graphActiveDevices("get-active-macs-user?trend=perDay&get=getCount-user&created=&owner=" + auth_user, "Day");
 	graphMaxConnected("max-per-trend-user?trend=perDay&get=user&created=&owner=" + auth_user, "Day");	/*...*/
 	graphMaxCcq("max-per-trend-user?trend=perDay&get=user&created=&owner=" + auth_user, "Day");
 	graphMaxUtil("max-per-trend-user?trend=perDay&get=user&created=&owner=" + auth_user, "Day");
@@ -953,20 +1216,43 @@ macStats.controller('userChartsPM',
 /*PERMAC*/
 macStats.controller('userPermacPD',
 ['$scope', '$http', 'myService', '$timeout', function($scope, $http, myService, $timeout){	
-	var auth_user = $(".auth-user").text();	/*Get the authenticated user that logged in*/
-	$scope.userTypeIndicator = "user";	/*Inserted in beginnin of url to indicate user & admin*/
+	//Get the authenticated user that logged in
+	var auth_user = $(".auth-user").text();
+	
+	//Inserted in beginnin of url to indicate user & admin
+	$scope.userTypeIndicator = "user";
+
+	//Trend Url Array
 	$scope.trendUrl = ["user/reports/PerMac-perDay", 
 					   "user/reports/PerMac-perWeek", 
-					   "user/reports/PerMac-perMonth"];	/*Trend Url Array*/
+					   "user/reports/PerMac-perMonth"];
 	
+	//RETURNS list of macs utilizations
 	myService.macsPerTrendUser('perDay', auth_user).then(function(response){
 		$scope.utilizations = response.data;
-	})	/*RETURNS list of macs utilizations*/
+	})
+	//Function that searches macs
 	$scope.searchMac = function(mac){
 		myService.searchMac(mac).then(function(response){
 			$scope.results = response.data;
-		})	/*Function that searches macs*/
+		})
 	}
+
+	//Same as ADMIN PERMAC section
+	var arr = [];
+	myService.getActiveMacsUser('countActivePD', 'getMac-user', '', auth_user).then(function(response){
+		$scope.a = myService.customFunction1(response.data);
+		
+		for(var x=0; x<$scope.a.length; x++){
+			myService.permacActivity('perDay-graph', $scope.a[x]).then(function(response){
+				$scope.b = myService.customFunction2(response.data);
+				arr.push($scope.b);
+			})
+		}
+		
+		$scope.packageSummary = arr;
+	})
+
 }]);
 macStats.controller('userPermacPW',
 ['$scope', '$http', 'myService', '$timeout', function($scope, $http, myService, $timeout){	
@@ -984,6 +1270,19 @@ macStats.controller('userPermacPW',
 			$scope.results = response.data;
 		})
 	}
+
+	var arr = [];
+	myService.getActiveMacsUser('countActivePW', 'getMac-user', '', auth_user).then(function(response){
+		$scope.a = myService.customFunction1(response.data);	
+		for(var x=0; x<$scope.a.length; x++){
+			myService.permacActivity('perWeek', $scope.a[x]).then(function(response){
+				$scope.b = myService.customFunction2(response.data);
+				arr.push($scope.b);
+			})
+		}
+		$scope.packageSummary = arr;
+	})
+
 }]);
 macStats.controller('userPermacPM',
 ['$scope', '$http', 'myService', '$timeout', function($scope, $http, myService, $timeout){	
@@ -1001,6 +1300,19 @@ macStats.controller('userPermacPM',
 			$scope.results = response.data;
 		})
 	}
+
+	var arr = [];
+	myService.getActiveMacsUser('countActivePM', 'getMac-user', '', auth_user).then(function(response){
+		$scope.a = myService.customFunction1(response.data);	
+		for(var x=0; x<$scope.a.length; x++){
+			myService.permacActivity('perMonth', $scope.a[x]).then(function(response){
+				$scope.b = myService.customFunction2(response.data);
+				arr.push($scope.b);
+			})
+		}
+		$scope.packageSummary = arr;
+	})
+
 }]);
 
 /*PERMAC-ACTIVITY*/
@@ -1010,22 +1322,40 @@ macStats.controller('userPermacActivityPD',
 // use $location.search() to get current url search hash eg.(/macs?mac=1011200107) returns mac=1011200107 as object
 // use $location.hash() to get current url hash eg.(/macs?mac=1011200107&foo=bar) returns foo=bar as object
 	$(".permac-graph").attr("style", "display:block");
-	var urlParam = $location.search();	/*Gets the query parameter of current url as object*/
-	$scope.macParam = urlParam.mac;		/*Store the query parameter value in variable*/
 	
-	$scope.userTypeIndicator = "user";	/*Inserted in beginnin of url to indicate user & admin*/
+	//Gets the query parameter of current url as object
+	var urlParam = $location.search();
+	
+	//Store the query parameter value in variable
+	$scope.macParam = urlParam.mac;
+	
+	//Inserted in beginnin of url to indicate user & admin
+	$scope.userTypeIndicator = "user";
+	
+	//Trend Url Array
 	$scope.trendUrl = ["user/reports/PerMac-perDay/macs?mac=" + $scope.macParam, 
 					   "user/reports/PerMac-perWeek/macs?mac=" + $scope.macParam, 
-					   "user/reports/PerMac-perMonth/macs?mac=" + $scope.macParam];	/*Trend Url Array*/
+					   "user/reports/PerMac-perMonth/macs?mac=" + $scope.macParam];
 
+	//RETURNS THE LIST of each specific mac utilizations
 	myService.permacActivity('perDay', $scope.macParam).then(function(response){
 		$scope.utilizations = response.data;
-	})	/*RETURNS THE LIST of each specific mac utilizations*/
+	})
+	//Function that searches macs
 	$scope.searchMac = function(mac){
 		myService.searchMac(mac).then(function(response){
 			$scope.results = response.data;
-		})	/*Function that searches macs*/
+		})
 	}
+
+	//Same as ADMIN PERMAC ACTIVITY section
+	var arr = [];
+	myService.permacActivity('perDay-graph', $scope.macParam).then(function(response){
+		$scope.b = myService.customFunction2(response.data);
+		arr.push($scope.b);
+	})
+	$scope.packageSummary = arr;
+
 }]);
 macStats.controller('userPermacActivityPW',
 ['$scope', '$http', '$location', 'myService', function($scope, $http, $location, myService){
@@ -1046,6 +1376,14 @@ macStats.controller('userPermacActivityPW',
 			$scope.results = response.data;
 		})
 	}
+
+	var arr = [];
+	myService.permacActivity('perWeek', $scope.macParam).then(function(response){
+		$scope.b = myService.customFunction2(response.data);
+		arr.push($scope.b);
+	})
+	$scope.packageSummary = arr;
+
 }]);
 macStats.controller('userPermacActivityPM',
 ['$scope', '$http', '$location', 'myService', function($scope, $http, $location, myService){
@@ -1066,32 +1404,49 @@ macStats.controller('userPermacActivityPM',
 			$scope.results = response.data;
 		})
 	}
+
+	var arr = [];
+	myService.permacActivity('perMonth', $scope.macParam).then(function(response){
+		$scope.b = myService.customFunction2(response.data);
+		arr.push($scope.b);
+	})
+	$scope.packageSummary = arr;
+
 }]);
 
 /*CHARTS PERMAC-ACTIVITY*/
 macStats.controller('userChartsPermacActPD',
 ['$scope', '$http', '$location', 'myService', function($scope, $http, $location, myService){
-	$(".chart-active-container").hide();	/*Hides the connected chart container*/
+	//Hides the connected chart container
+	$(".chart-active-container").hide();
 	$(".chart-connected-container").attr("style", "display: block; margin: auto; border-top: 4px solid rgba(0, 204, 47, 0.76);");
 	
-	var urlParam = $location.search();	/*Gets the query parameter of current url in object form*/
-	$scope.macParam = urlParam.mac;	/*Gets the value of query parameter from object and stored in variable*/
+	//Gets the query parameter of current url in object form
+	var urlParam = $location.search();
+	//Gets the value of query parameter from object and stored in variable
+	$scope.macParam = urlParam.mac;
 	
 	$scope.trend = "Per Day";
-	$scope.userTypeIndicator = "user";	/*Inserted in beginnin of url to indicate user & admin*/
+	
+	//Inserted in beginnin of url to indicate user & admin
+	$scope.userTypeIndicator = "user";
+
+	//Trend Url Array
 	$scope.trendUrl = ["user/reports/Charts-perDay/macs?mac=" + $scope.macParam, 
 					   "user/reports/Charts-perWeek/macs?mac=" + $scope.macParam, 
-					   "user/reports/Charts-perMonth/macs?mac=" + $scope.macParam];	/*Trend Url Array*/
+					   "user/reports/Charts-perMonth/macs?mac=" + $scope.macParam];	
 
-	graphMaxConnected("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");	/*Calling of Graph Functions*/
-	graphMaxCcq("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxUtil("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxUsage("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxLease("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxFreeMem("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxCpuFreq("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxCpuLoad("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
-	graphMaxFreeHdd("permac-activity?trend=perDay&mac=" + $scope.macParam, "Day");
+	//Calling of Graph Functions
+	graphMaxConnected("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxCcq("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxUtil("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxUsage("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxLease("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxFreeMem("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxCpuFreq("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxCpuLoad("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	graphMaxFreeHdd("permac-activity?trend=perDay-graph&mac=" + $scope.macParam, "Day");
+	
 }])
 macStats.controller('userChartsPermacActPW',
 ['$scope', '$http', '$location', 'myService', function($scope, $http, $location, myService){
@@ -1164,17 +1519,36 @@ $("body").on("click", ".reports-sec", function(){
 $("body").on("click", ".permac-pri", function(){
 	$(".permac-tb1").show();
 	$(".permac-tb2").hide();
+	$(".permac-tb3").hide();
+	$(".permac-tb4").hide();
 	$(".permac-search-results").hide();
 });
 $("body").on("click", ".permac-sec", function(){
 	$(".permac-tb2").show();
 	$(".permac-tb1").hide();
+	$(".permac-tb3").hide();
+	$(".permac-tb4").hide();
+	$(".permac-search-results").hide();
+});
+$("body").on("click", ".permac-tri", function(){
+	$(".permac-tb3").show();
+	$(".permac-tb1").hide();
+	$(".permac-tb2").hide();
+	$(".permac-tb4").hide();
+	$(".permac-search-results").hide();
+});
+$("body").on("click", ".permac-packages", function(){
+	$(".permac-tb4").show();
+	$(".permac-tb1").hide();
+	$(".permac-tb2").hide();
+	$(".permac-tb3").hide();
 	$(".permac-search-results").hide();
 });
 $("body").on("click", ".show-results", function(){
 	$(".permac-search-results").show();
 	$(".permac-tb1").hide();
 	$(".permac-tb2").hide();
+	$(".permac-tb3").hide();	
 });
 //Charts Events
 $("body").on("click", ".active-line", function(){
