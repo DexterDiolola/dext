@@ -43,6 +43,8 @@ macStats.factory('myService',['$http', function($http){
 			})
 		},
 
+		
+
 		//USERS FUNCTIONS
 		getActiveMacsUser: function(trend, get, created, owner){
 			return $http({
@@ -63,7 +65,17 @@ macStats.factory('myService',['$http', function($http){
 			});
 		},
 
+		
+
 		//CUSTOM FUNCTIONS
+		packageSummary: function(trend, mac, nthDay){
+			return $http({
+				method: 'GET',
+				url: '/api/package-summary?trend=' + trend + '&mac=' + mac + '&nthDay=' + nthDay 
+			});
+		},
+
+
 		customFunction1: function(object){
 			//Declare a new array
 			var macs = [];
@@ -200,19 +212,34 @@ macStats.controller('dashboardControllerPD',
 
 	//DEBUGGING SECTION
 	var arr = [];
-	myService.getActiveMacs('countActivePD', 'getMac', '').then(function(response){
+	myService.getActiveMacs('countActivePM', 'getMac', '').then(function(response){
 		$scope.a = myService.customFunction1(response.data);
 		
 		for(var x=0; x<$scope.a.length; x++){
-			myService.permacActivity('perDay', $scope.a[x]).then(function(response){
-				$scope.b = myService.customFunction2(response.data);
-				arr.push($scope.b);
-			})
+			for(var y=0; y<30; y++){
+				myService.packageSummary('perDay', $scope.a[x], y).then(function(response){
+					response.data.length != 0 ? $scope.b = myService.customFunction2(response.data) : arr.pop();
+					arr.push($scope.b);
+				})
+			}		
 		}
 		
 		$scope.packageSummary = arr;
-		console.log($scope.packageSummary);
+		//console.log($scope.packageSummary);
 	})
+
+	var arr2 = [];
+	for(var y=0; y<30; y++){
+		myService.packageSummary('perDay', '64D1542A38C0', y).then(function(response){
+			response.data.length != 0 ? $scope.b = myService.customFunction2(response.data) : arr2.pop();
+			arr2.push($scope.b);
+		})
+	}
+
+	
+	
+	console.log(arr2);
+
 
 }]);
 macStats.controller('dashboardControllerPW',
@@ -473,6 +500,8 @@ macStats.controller('perMacControllerPD',
 	$scope.trendUrl = ["admin/reports/PerMac-perDay", 
 					   "admin/reports/PerMac-perWeek", 
 					   "admin/reports/PerMac-perMonth"];
+	//Hides the 'Packages' tab in pemac template
+	$(".permac-packages").hide();
 
 	//RETURNS list of macs utilizations			
 	myService.macsPerTrend('perDay').then(function(response){
@@ -485,26 +514,6 @@ macStats.controller('perMacControllerPD',
 		})
 	}
 
-	//Declare a storage array
-	var arr = [];
-	
-	//Get the mac of active devices and store it to a variable
-	myService.getActiveMacs('countActivePD', 'getMac', '').then(function(response){
-		$scope.a = myService.customFunction1(response.data);
-		
-		//Lopp through the object array and store every element in 'arr'
-		for(var x=0; x<$scope.a.length; x++){
-			/*Get the object returned by permacActivity function and make 
-			it as a parameter calling customFunction2 function*/
-			myService.permacActivity('perDay-graph', $scope.a[x]).then(function(response){
-				$scope.b = myService.customFunction2(response.data);
-				arr.push($scope.b);
-			})
-		}
-		
-		//Store 'arr' in to a new variable
-		$scope.packageSummary = arr;
-	})
 }]);
 macStats.controller('perMacControllerPW',
 ['$scope', '$http', 'myService', function($scope, $http, myService){
@@ -513,6 +522,8 @@ macStats.controller('perMacControllerPW',
 					   "admin/reports/PerMac-perWeek", 
 					   "admin/reports/PerMac-perMonth"];
 
+	$(".permac-packages").hide();
+	
 	myService.macsPerTrend('perWeek').then(function(response){
 		$scope.utilizations = response.data;
 	})
@@ -522,19 +533,6 @@ macStats.controller('perMacControllerPW',
 		})
 	}
 
-	var arr = [];
-	myService.getActiveMacs('countActivePW', 'getMac', '').then(function(response){
-		$scope.a = myService.customFunction1(response.data);
-		
-		for(var x=0; x<$scope.a.length; x++){
-			myService.permacActivity('perWeek', $scope.a[x]).then(function(response){
-				$scope.b = myService.customFunction2(response.data);
-				arr.push($scope.b);
-			})
-		}
-		
-		$scope.packageSummary = arr;
-	})
 }]);
 macStats.controller('perMacControllerPM',
 ['$scope', '$http', 'myService', function($scope, $http, myService){
@@ -543,6 +541,8 @@ macStats.controller('perMacControllerPM',
 					   "admin/reports/PerMac-perWeek", 
 					   "admin/reports/PerMac-perMonth"];
 
+	$(".permac-packages").hide();
+	
 	myService.macsPerTrend('perMonth').then(function(response){
 		$scope.utilizations = response.data;
 	})
@@ -552,19 +552,6 @@ macStats.controller('perMacControllerPM',
 		})
 	}
 
-	var arr = [];
-	myService.getActiveMacs('countActivePM', 'getMac', '').then(function(response){
-		$scope.a = myService.customFunction1(response.data);
-		
-		for(var x=0; x<$scope.a.length; x++){
-			myService.permacActivity('perMonth', $scope.a[x]).then(function(response){
-				$scope.b = myService.customFunction2(response.data);
-				arr.push($scope.b);
-			})
-		}
-		
-		$scope.packageSummary = arr;
-	})
 }]);
 
 /*PERMAC-ACTIVITY SECTION*/
@@ -599,14 +586,22 @@ macStats.controller('permacActivityPD',
 
 	//Declare a storage array
 	var arr = [];
-	//Get the object array returned by permacActivity function and make it as parameter to call customFunction2 function
-	myService.permacActivity('perDay-graph', $scope.macParam).then(function(response){
-		$scope.b = myService.customFunction2(response.data);
-		//Insert the object array in 'arr'
-		arr.push($scope.b);
-	})
-	//Store 'arr' in new variable
+	
+	//Loop through a specified number
+	//Note: every number in the loop corresponds to the nthDay returned by packageSummary function
+	for(var y=0; y<30; y++){
+		myService.packageSummary('perDay', $scope.macParam, y).then(function(response){
+			//If the array is undefined its length is '0' so, if array length is 0 then
+			//that array will not inserted instead it will remove by pop() method.
+			response.data.length != 0 ? $scope.b = myService.customFunction2(response.data) : arr.pop();
+			arr.push($scope.b);
+		})
+	}		
+	//Store the resulted array 'arr' into angular variable.
 	$scope.packageSummary = arr;
+	
+	//console.log($scope.packageSummary);
+	
 	
 }]);
 macStats.controller('permacActivityPW',
@@ -630,10 +625,12 @@ macStats.controller('permacActivityPW',
 	}
 
 	var arr = [];
-	myService.permacActivity('perWeek', $scope.macParam).then(function(response){
-		$scope.b = myService.customFunction2(response.data);
-		arr.push($scope.b);
-	})
+	for(var y=0; y<30; y++){
+		myService.packageSummary('perWeek', $scope.macParam, y).then(function(response){
+			response.data.length != 0 ? $scope.b = myService.customFunction2(response.data) : arr.pop();
+			arr.push($scope.b);
+		})
+	}
 	$scope.packageSummary = arr;
 
 }]);
@@ -658,10 +655,12 @@ macStats.controller('permacActivityPM',
 	}
 
 	var arr = [];
-	myService.permacActivity('perMonth', $scope.macParam).then(function(response){
-		$scope.b = myService.customFunction2(response.data);
-		arr.push($scope.b);
-	})
+	for(var y=0; y<30; y++){
+		myService.packageSummary('perDay', $scope.macParam, y).then(function(response){
+			response.data.length != 0 ? $scope.b = myService.customFunction2(response.data) : arr.pop();
+			arr.push($scope.b);
+		})
+	}
 	$scope.packageSummary = arr;
 
 }]);
@@ -1238,21 +1237,6 @@ macStats.controller('userPermacPD',
 		})
 	}
 
-	//Same as ADMIN PERMAC section
-	var arr = [];
-	myService.getActiveMacsUser('countActivePD', 'getMac-user', '', auth_user).then(function(response){
-		$scope.a = myService.customFunction1(response.data);
-		
-		for(var x=0; x<$scope.a.length; x++){
-			myService.permacActivity('perDay-graph', $scope.a[x]).then(function(response){
-				$scope.b = myService.customFunction2(response.data);
-				arr.push($scope.b);
-			})
-		}
-		
-		$scope.packageSummary = arr;
-	})
-
 }]);
 macStats.controller('userPermacPW',
 ['$scope', '$http', 'myService', '$timeout', function($scope, $http, myService, $timeout){	
@@ -1271,18 +1255,6 @@ macStats.controller('userPermacPW',
 		})
 	}
 
-	var arr = [];
-	myService.getActiveMacsUser('countActivePW', 'getMac-user', '', auth_user).then(function(response){
-		$scope.a = myService.customFunction1(response.data);	
-		for(var x=0; x<$scope.a.length; x++){
-			myService.permacActivity('perWeek', $scope.a[x]).then(function(response){
-				$scope.b = myService.customFunction2(response.data);
-				arr.push($scope.b);
-			})
-		}
-		$scope.packageSummary = arr;
-	})
-
 }]);
 macStats.controller('userPermacPM',
 ['$scope', '$http', 'myService', '$timeout', function($scope, $http, myService, $timeout){	
@@ -1300,18 +1272,6 @@ macStats.controller('userPermacPM',
 			$scope.results = response.data;
 		})
 	}
-
-	var arr = [];
-	myService.getActiveMacsUser('countActivePM', 'getMac-user', '', auth_user).then(function(response){
-		$scope.a = myService.customFunction1(response.data);	
-		for(var x=0; x<$scope.a.length; x++){
-			myService.permacActivity('perMonth', $scope.a[x]).then(function(response){
-				$scope.b = myService.customFunction2(response.data);
-				arr.push($scope.b);
-			})
-		}
-		$scope.packageSummary = arr;
-	})
 
 }]);
 
@@ -1350,10 +1310,12 @@ macStats.controller('userPermacActivityPD',
 
 	//Same as ADMIN PERMAC ACTIVITY section
 	var arr = [];
-	myService.permacActivity('perDay-graph', $scope.macParam).then(function(response){
-		$scope.b = myService.customFunction2(response.data);
-		arr.push($scope.b);
-	})
+	for(var y=0; y<30; y++){
+		myService.packageSummary('perDay', $scope.macParam, y).then(function(response){
+			response.data.length != 0 ? $scope.b = myService.customFunction2(response.data) : arr.pop();
+			arr.push($scope.b);
+		})
+	}
 	$scope.packageSummary = arr;
 
 }]);
@@ -1378,10 +1340,12 @@ macStats.controller('userPermacActivityPW',
 	}
 
 	var arr = [];
-	myService.permacActivity('perWeek', $scope.macParam).then(function(response){
-		$scope.b = myService.customFunction2(response.data);
-		arr.push($scope.b);
-	})
+	for(var y=0; y<30; y++){
+		myService.packageSummary('perDay', $scope.macParam, y).then(function(response){
+			response.data.length != 0 ? $scope.b = myService.customFunction2(response.data) : arr.pop();
+			arr.push($scope.b);
+		})
+	}
 	$scope.packageSummary = arr;
 
 }]);
@@ -1406,10 +1370,12 @@ macStats.controller('userPermacActivityPM',
 	}
 
 	var arr = [];
-	myService.permacActivity('perMonth', $scope.macParam).then(function(response){
-		$scope.b = myService.customFunction2(response.data);
-		arr.push($scope.b);
-	})
+	for(var y=0; y<30; y++){
+		myService.packageSummary('perDay', $scope.macParam, y).then(function(response){
+			response.data.length != 0 ? $scope.b = myService.customFunction2(response.data) : arr.pop();
+			arr.push($scope.b);
+		})
+	}
 	$scope.packageSummary = arr;
 
 }]);
@@ -1548,7 +1514,8 @@ $("body").on("click", ".show-results", function(){
 	$(".permac-search-results").show();
 	$(".permac-tb1").hide();
 	$(".permac-tb2").hide();
-	$(".permac-tb3").hide();	
+	$(".permac-tb3").hide();
+	$(".permac-tb4").hide();	
 });
 //Charts Events
 $("body").on("click", ".active-line", function(){
